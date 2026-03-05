@@ -43,11 +43,11 @@ The `.gitignore` in this repo excludes `terraform.tfvars` and `*.auto.tfvars` to
 ### Minimal — DHCP, single NIC
 
 ```hcl
-vsphere_server = "vcenter.example.com"
-vsphere_user   = "administrator@vsphere.local"
-datacenter     = "dc01"
-cluster        = "cluster01"
-datastore      = "datastore01"
+vsphere_server = "vcenter.example.com"          # hostname or IP only — no https://
+vsphere_user   = "administrator@vsphere.local"  # UPN format; DOMAIN\user also works
+datacenter     = "dc01"                         # exact name as shown in vCenter inventory
+cluster        = "cluster01"                    # exact name as shown in vCenter inventory
+datastore      = "datastore01"                  # exact name as shown in vCenter inventory
 vm_name        = "linux-vm-01"
 template_name  = "ubuntu-22.04-template"
 guest_id       = "ubuntu64Guest"
@@ -109,6 +109,10 @@ time_zone = "America/New_York"
 | `vsphere_password` | `string` | required | vCenter password (sensitive) |
 | `vsphere_allow_unverified_ssl` | `bool` | `false` | Skip TLS certificate verification |
 
+**`vsphere_server`** — hostname or IP address only, no protocol or port (e.g. `vcenter.example.com`, not `https://vcenter.example.com`).
+
+**`vsphere_user`** — UPN format (`user@domain`, e.g. `administrator@vsphere.local`) or `DOMAIN\user` format.
+
 ### Infrastructure Placement
 
 | Variable | Type | Default | Description |
@@ -119,6 +123,10 @@ time_zone = "America/New_York"
 | `resource_pool` | `string` | `null` | Resource pool name; `null` uses the cluster/host root pool |
 | `datastore` | `string` | `null` | Datastore name (mutually exclusive with `datastore_cluster`) |
 | `datastore_cluster` | `string` | `null` | Datastore cluster name (mutually exclusive with `datastore`) |
+
+All inventory names (`datacenter`, `cluster`, `host`, `datastore`, `datastore_cluster`, `resource_pool`) must match **exactly** as they appear in the vCenter inventory — they are case-sensitive. Find them in the vSphere Client under the Hosts & Clusters and Storage views.
+
+Set exactly one of `cluster` or `host`, and exactly one of `datastore` or `datastore_cluster`. The template enforces this with `check` blocks that fail at plan time if both are set.
 
 ### VM Identity
 
