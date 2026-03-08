@@ -27,10 +27,10 @@ module "vm" {
   datastore         = var.datastore
   datastore_cluster = var.datastore_cluster
   host              = var.host
-  vm_folder         = var.vm_folder
 
   # VM identity
   vm_name    = var.vm_name
+  vm_folder  = var.vm_folder
   annotation = var.annotation
   tags       = var.tags
 
