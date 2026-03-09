@@ -211,7 +211,7 @@ Set exactly one of `cluster` or `host`, and exactly one of `datastore` or `datas
 ```hcl
 {
   ipv4_address = "192.168.1.100"   # required
-  ipv4_netmask = 24                # required — prefix length, 1–30
+  ipv4_netmask = 24                # required — prefix length, 1–32
 }
 ```
 

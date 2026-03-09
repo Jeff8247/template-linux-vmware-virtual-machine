@@ -268,9 +268,9 @@ variable "ip_settings" {
 
   validation {
     condition = alltrue([
-      for s in var.ip_settings : s.ipv4_netmask >= 1 && s.ipv4_netmask <= 30
+      for s in var.ip_settings : s.ipv4_netmask >= 1 && s.ipv4_netmask <= 32
     ])
-    error_message = "ipv4_netmask must be between 1 and 30."
+    error_message = "ipv4_netmask must be between 1 and 32."
   }
 }
 
