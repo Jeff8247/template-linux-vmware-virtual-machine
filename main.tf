@@ -18,7 +18,7 @@ check "datastore_exclusive" {
 }
 
 module "vm" {
-  source = "github.com/Jeff8247/module-vmware-virtual-machine?ref=v1.0.0"
+  source = "github.com/Jeff8247/module-vmware-virtual-machine?ref=v1.0.1"
 
   # Infrastructure placement
   datacenter        = var.datacenter

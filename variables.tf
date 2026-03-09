@@ -207,6 +207,16 @@ variable "disks" {
       eagerly_scrub    = false
     }
   ]
+
+  validation {
+    condition     = length(var.disks) == length(distinct([for d in var.disks : d.unit_number]))
+    error_message = "Each disk must have a unique unit_number."
+  }
+
+  validation {
+    condition     = length(var.disks) == length(distinct([for d in var.disks : d.label]))
+    error_message = "Each disk must have a unique label."
+  }
 }
 
 variable "scsi_type" {
@@ -258,9 +268,9 @@ variable "ip_settings" {
 
   validation {
     condition = alltrue([
-      for s in var.ip_settings : s.ipv4_netmask >= 1 && s.ipv4_netmask <= 32
+      for s in var.ip_settings : s.ipv4_netmask >= 1 && s.ipv4_netmask <= 30
     ])
-    error_message = "ipv4_netmask must be between 1 and 32."
+    error_message = "ipv4_netmask must be between 1 and 30."
   }
 }
 
