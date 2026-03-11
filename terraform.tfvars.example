@@ -1,93 +1,45 @@
-# vCenter connection
-# Tip: avoid storing passwords here — use environment variables instead:
+# vCenter connection — set password via environment variable:
 #   export TF_VAR_vsphere_password="..."
-vsphere_server               = "vcenter.example.com"
-vsphere_user                 = "administrator@vsphere.local"
-vsphere_password             = "<vsphere-password>"
-vsphere_allow_unverified_ssl = false
+vsphere_server = "vcenter.example.com"
+vsphere_user   = "administrator@vsphere.local"
 
 # Infrastructure placement
-datacenter        = "dc01"
-cluster           = "cluster01"
-resource_pool     = null           # e.g. "rp-dev" or null to use cluster root
-datastore         = "datastore01"  # set one of datastore or datastore_cluster
-datastore_cluster = null
-host              = null           # set if targeting a specific host instead of a cluster
+datacenter = "dc01"
+cluster    = "cluster01"
+datastore  = "datastore01"
 
 # VM identity
-vm_name    = "linux-vm-01"
-vm_folder  = "VMs/Linux"          # vSphere inventory folder path, or null
-annotation = "Deployed by Terraform"
-tags       = {}                    # e.g. { "Environment" = "Production" }
+vm_name   = "linux-vm-01"
+vm_folder = "VMs/Linux"
 
 # Template
-template_name       = "ubuntu-22.04-template"
-template_datacenter = null         # only needed if template is in a different datacenter
-linked_clone        = false
+template_name = "ubuntu-22.04-template"
 
-# CPU
-num_cpus            = 2
-cpu_hot_add_enabled = false
-cpu_reservation      = 0
-cpu_limit            = -1
-cpu_share_level      = "normal"
-
-# Memory (MB, must be a multiple of 4)
-memory                 = 4096
-memory_hot_add_enabled = false
-memory_reservation     = 0
-memory_limit           = -1
-memory_share_level     = "normal"
+# Compute
+num_cpus = 2
+memory   = 4096
 
 # Storage
-scsi_type             = "pvscsi"
-scsi_controller_count = 1
-
 disks = [
   {
-    label            = "disk0"
-    size             = 50   # GB
-    unit_number      = 0
-    thin_provisioned = true
-    eagerly_scrub    = false
+    label       = "disk0"
+    size        = 50
+    unit_number = 0
   }
 ]
 
 # Networking
-network_interfaces = [
-  {
-    network_name = "VM Network"
-    adapter_type = "vmxnet3"
-  }
-]
+network_interfaces = [{ network_name = "VM Network" }]
 
-# Static IP (leave ip_settings = [] for DHCP)
-ip_settings = [
-  # {
-  #   ipv4_address = "192.168.1.100"
-  #   ipv4_netmask = 24
-  # }
-]
-ipv4_gateway    = null             # e.g. "192.168.1.1"
-dns_servers     = ["8.8.8.8", "8.8.4.4"]
-dns_suffix_list = []               # e.g. ["example.com"]
+# Static IP — remove ip_settings block entirely for DHCP
+ip_settings     = [{ ipv4_address = "192.168.1.100", ipv4_netmask = 24 }]
+ipv4_gateway    = "192.168.1.1"
+dns_servers     = ["192.168.1.10", "192.168.1.11"]
+dns_suffix_list = ["example.com"]
 
-# Guest OS - Linux
-guest_id      = "ubuntu64Guest"   # e.g. ubuntu64Guest, rhel9_64Guest, debian12_64Guest
-computer_name = null              # null defaults to vm_name
-domain        = "example.com"     # DNS domain suffix
-time_zone     = "UTC"             # Linux timezone string, e.g. America/New_York
+# Guest OS
+guest_id  = "ubuntu64Guest"   # ubuntu64Guest, rhel9_64Guest, debian12_64Guest, etc.
+time_zone = "UTC"              # IANA timezone string e.g. America/New_York
 
 # Hardware
-firmware         = "bios"
-hardware_version = null           # null = keep template version
-enable_disk_uuid = true
-vbs_enabled      = false
-
-# Timeouts
-wait_for_guest_net_timeout  = 5
-wait_for_guest_net_routable = true
-customize_timeout           = 30
-
-# Extra VMX config (optional)
-extra_config = {}
+firmware = "efi"
