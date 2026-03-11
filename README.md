@@ -253,6 +253,33 @@ Common `time_zone` values:
 
 Full list: [IANA Time Zone Database](https://www.iana.org/time-zones)
 
+### Linux Script Example
+
+`linux_script_text` runs as root during guest customization, after the hostname and network have been applied. Useful for first-boot configuration that doesn't warrant a full configuration management tool.
+
+```hcl
+linux_script_text = <<-EOF
+  #!/bin/bash
+  set -e
+
+  # Disable root SSH login
+  sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  systemctl restart sshd
+
+  # Set DNS search domain in resolved
+  echo "Domains=corp.example.com" >> /etc/systemd/resolved.conf
+  systemctl restart systemd-resolved
+
+  # Update all packages
+  dnf update -y
+
+  # Enable and start the VMware Tools service (RHEL/Rocky/Alma)
+  systemctl enable --now vmtoolsd
+EOF
+```
+
+> **Note:** The script runs in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead.
+
 ### Hardware
 
 | Variable | Type | Default | Description |
@@ -263,7 +290,7 @@ Full list: [IANA Time Zone Database](https://www.iana.org/time-zones)
 | `enable_disk_uuid` | `bool` | `true` | Expose disk UUIDs to the guest OS |
 | `vbs_enabled` | `bool` | `false` | Enable Virtualization-Based Security (requires EFI) |
 | `efi_secure_boot_enabled` | `bool` | `false` | Enable EFI Secure Boot (requires firmware = efi) |
-| `linux_script_text` | `string` | `null` | Inline shell script to run during guest customization |
+| `linux_script_text` | `string` | `null` | Inline shell script to run during guest customization. See example below. |
 | `wait_for_guest_net_timeout` | `number` | `5` | Minutes to wait for guest networking (`0` disables) |
 | `wait_for_guest_net_routable` | `bool` | `true` | Require a routable IP before marking VM ready |
 | `customize_timeout` | `number` | `30` | Minutes to wait for guest customization to complete |
