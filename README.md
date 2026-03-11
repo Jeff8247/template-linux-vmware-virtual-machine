@@ -135,7 +135,22 @@ Set exactly one of `cluster` or `host`, and exactly one of `datastore` or `datas
 | `vm_name` | `string` | required | VM name in vSphere inventory (max 80 chars) |
 | `vm_folder` | `string` | `null` | vSphere folder path, e.g. `"VMs/Linux"` |
 | `annotation` | `string` | `null` | VM notes / annotation |
-| `tags` | `map(string)` | `{}` | vSphere tags as `{ category = "tag-name" }` |
+| `tags` | `map(string)` | `{}` | vSphere tags as `{ category = "tag-name" }`. The tag category and tag value must already exist in vCenter. |
+
+#### Tagging Example
+
+Tags are key/value pairs where the key is the **tag category** name and the value is the **tag name**, both as they appear in vCenter. Categories and tags must be pre-created in vCenter before deployment.
+
+```hcl
+tags = {
+  "Environment" = "Production"   # e.g. Production, Development, Test
+  "Owner"       = "platform-team"
+  "CostCentre"  = "CC-1234"
+  "Application" = "my-app"
+}
+```
+
+> **Tip:** Enforce mandatory tags by creating the required tag categories in vCenter with the **Cardinality** set to `One tag per object` — this prevents a VM from having multiple values for the same category.
 
 ### Template
 
