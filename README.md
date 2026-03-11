@@ -238,7 +238,7 @@ One entry per NIC, in the same order as `network_interfaces`.
 |----------|------|---------|-------------|
 | `guest_id` | `string` | required | vSphere guest OS ID, e.g. `ubuntu64Guest` |
 | `computer_name` | `string` | `null` | VM hostname. Defaults to `vm_name` |
-| `domain` | `string` | `null` | DNS domain suffix for guest customization |
+| `domain` | `string` | `null` | DNS search domain suffix applied to the guest OS (e.g. `corp.example.com`). **This is not an AD domain join** — see [Active Directory Domain Join](#active-directory-domain-join) below. |
 | `time_zone` | `string` | `"UTC"` | Linux timezone string, e.g. `America/New_York` |
 
 Common `guest_id` values:
@@ -294,6 +294,81 @@ EOF
 ```
 
 > **Note:** The script runs in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead.
+
+### Active Directory Domain Join
+
+Unlike Windows, vSphere guest customization does **not** perform an AD domain join for Linux VMs. The `domain` variable sets only the DNS search suffix. To join a Linux VM to Active Directory, use `linux_script_text` with `realmd` and `sssd` — the modern, supported approach on RHEL, Rocky Linux, AlmaLinux, and Ubuntu.
+
+#### RHEL / Rocky Linux / AlmaLinux
+
+```hcl
+linux_script_text = <<-EOF
+  #!/bin/bash
+  set -e
+
+  # Install required packages
+  dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+
+  # Discover the domain (validates DNS is working)
+  realm discover corp.example.com
+
+  # Join the domain — password passed via stdin
+  echo "$AD_JOIN_PASSWORD" | realm join --user=svc-domain-join corp.example.com
+
+  # Allow all domain users to log in (restrict with: realm permit user@corp.example.com)
+  realm permit --all
+
+  # Use short usernames (user instead of user@corp.example.com)
+  sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
+
+  # Enable home directory creation on first login
+  systemctl enable --now oddjobd
+  authselect enable-feature with-mkhomedir
+
+  systemctl restart sssd
+EOF
+```
+
+#### Ubuntu / Debian
+
+```hcl
+linux_script_text = <<-EOF
+  #!/bin/bash
+  set -e
+
+  apt-get install -y realmd sssd sssd-tools adcli krb5-user packagekit
+
+  realm discover corp.example.com
+  echo "$AD_JOIN_PASSWORD" | realm join --user=svc-domain-join corp.example.com
+  realm permit --all
+
+  sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
+  pam-auth-update --enable mkhomedir
+
+  systemctl restart sssd
+EOF
+```
+
+#### Password Handling
+
+The join password must not be hardcoded in `terraform.tfvars`. Pass it at runtime via an environment variable so it stays out of files entirely:
+
+```bash
+export TF_VAR_linux_script_text="$(cat <<'EOF'
+#!/bin/bash
+set -e
+dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+echo "your-join-password" | realm join --user=svc-domain-join corp.example.com
+realm permit --all
+sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
+systemctl enable --now oddjobd
+authselect enable-feature with-mkhomedir
+systemctl restart sssd
+EOF
+)"
+```
+
+> **Note:** Even when passed via environment variable, `linux_script_text` is stored in Terraform state. For production environments with strict secrets management, consider using Ansible or another configuration management tool triggered post-boot instead, and leave `linux_script_text` null.
 
 ### Hardware
 

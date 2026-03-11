@@ -305,7 +305,7 @@ variable "computer_name" {
 }
 
 variable "domain" {
-  description = "DNS domain for the VM (used in guest customization)"
+  description = "DNS search domain suffix applied to the guest OS (e.g. corp.example.com). This is NOT an Active Directory domain join — use linux_script_text with realm/sssd for AD join."
   type        = string
   default     = null
 }
