@@ -42,4 +42,4 @@ guest_id  = "ubuntu64Guest"   # ubuntu64Guest, rhel9_64Guest, debian12_64Guest, 
 time_zone = "UTC"              # IANA timezone string e.g. America/New_York
 
 # Hardware
-firmware = "efi"
+firmware = "bios"
