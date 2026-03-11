@@ -150,7 +150,7 @@ Set exactly one of `cluster` or `host`, and exactly one of `datastore` or `datas
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `num_cpus` | `number` | `2` | Total vCPU count |
-| `num_cores_per_socket` | `number` | `1` | Cores per socket |
+| `num_cores_per_socket` | `number` | `null` | Cores per socket — defaults to `num_cpus` (single socket) |
 | `cpu_hot_add_enabled` | `bool` | `false` | Allow CPU hot-add |
 | `cpu_reservation` | `number` | `0` | CPU reservation in MHz |
 | `cpu_limit` | `number` | `-1` | CPU limit in MHz (`-1` = unlimited) |
