@@ -262,6 +262,8 @@ Full list: [IANA Time Zone Database](https://www.iana.org/time-zones)
 | `nested_hv_enabled` | `bool` | `false` | Enable nested hardware virtualization |
 | `enable_disk_uuid` | `bool` | `true` | Expose disk UUIDs to the guest OS |
 | `vbs_enabled` | `bool` | `false` | Enable Virtualization-Based Security (requires EFI) |
+| `efi_secure_boot_enabled` | `bool` | `false` | Enable EFI Secure Boot (requires firmware = efi) |
+| `linux_script_text` | `string` | `null` | Inline shell script to run during guest customization |
 | `wait_for_guest_net_timeout` | `number` | `5` | Minutes to wait for guest networking (`0` disables) |
 | `wait_for_guest_net_routable` | `bool` | `true` | Require a routable IP before marking VM ready |
 | `customize_timeout` | `number` | `30` | Minutes to wait for guest customization to complete |

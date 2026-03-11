@@ -346,6 +346,12 @@ variable "enable_disk_uuid" {
   default     = true
 }
 
+variable "efi_secure_boot_enabled" {
+  description = "Enable EFI Secure Boot. Requires firmware = 'efi'."
+  type        = bool
+  default     = false
+}
+
 variable "vbs_enabled" {
   description = "Enable Virtualization-Based Security (requires EFI firmware)"
   type        = bool
@@ -374,4 +380,10 @@ variable "extra_config" {
   description = "Additional VMX key/value pairs to set on the VM"
   type        = map(string)
   default     = {}
+}
+
+variable "linux_script_text" {
+  description = "Inline shell script to run during Linux guest customization. Requires open-vm-tools to support script execution."
+  type        = string
+  default     = null
 }
