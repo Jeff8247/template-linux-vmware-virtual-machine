@@ -383,7 +383,20 @@ variable "extra_config" {
 }
 
 variable "linux_script_text" {
-  description = "Inline shell script to run during Linux guest customization. Requires open-vm-tools to support script execution."
+  description = "Inline shell script to run during Linux guest customization. Requires open-vm-tools to support script execution. Mutually exclusive with linux_domain_join_user."
   type        = string
+  default     = null
+}
+
+variable "linux_domain_join_user" {
+  description = "AD user account used to join the Linux VM to the domain. Requires domain and linux_domain_join_password to also be set. Mutually exclusive with linux_script_text."
+  type        = string
+  default     = null
+}
+
+variable "linux_domain_join_password" {
+  description = "Password for the AD domain join account. Set via TF_VAR_linux_domain_join_password environment variable — do not store in tfvars."
+  type        = string
+  sensitive   = true
   default     = null
 }

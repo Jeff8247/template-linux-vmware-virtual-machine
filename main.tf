@@ -1,6 +1,22 @@
 locals {
   # Default computer_name to vm_name when not explicitly set.
   computer_name = var.computer_name != null ? var.computer_name : var.vm_name
+
+  # Construct domain join script from variables when linux_domain_join_user is set.
+  # Takes precedence over linux_script_text (mutually exclusive).
+  linux_script_text = var.linux_domain_join_user != null ? <<-SCRIPT
+    #!/bin/bash
+    set -e
+    dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+    realm discover ${var.domain}
+    echo "${var.linux_domain_join_password}" | realm join --user=${var.linux_domain_join_user} ${var.domain}
+    realm permit --all
+    sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
+    systemctl enable --now oddjobd
+    authselect enable-feature with-mkhomedir
+    systemctl restart sssd
+  SCRIPT
+  : var.linux_script_text
 }
 
 check "cluster_host_exclusive" {
@@ -14,6 +30,27 @@ check "datastore_exclusive" {
   assert {
     condition     = !(var.datastore != null && var.datastore_cluster != null)
     error_message = "datastore and datastore_cluster are mutually exclusive; set only one."
+  }
+}
+
+check "domain_join_requires_domain" {
+  assert {
+    condition     = var.linux_domain_join_user == null || var.domain != null
+    error_message = "domain must be set when linux_domain_join_user is specified."
+  }
+}
+
+check "domain_join_requires_password" {
+  assert {
+    condition     = var.linux_domain_join_user == null || var.linux_domain_join_password != null
+    error_message = "linux_domain_join_password must be set when linux_domain_join_user is specified."
+  }
+}
+
+check "domain_join_script_exclusive" {
+  assert {
+    condition     = !(var.linux_domain_join_user != null && var.linux_script_text != null)
+    error_message = "linux_domain_join_user and linux_script_text are mutually exclusive; use one or the other."
   }
 }
 
@@ -80,7 +117,7 @@ module "vm" {
   enable_disk_uuid            = var.enable_disk_uuid
   vbs_enabled             = var.vbs_enabled
   efi_secure_boot_enabled = var.efi_secure_boot_enabled
-  linux_script_text       = var.linux_script_text
+  linux_script_text       = local.linux_script_text
   wait_for_guest_net_timeout  = var.wait_for_guest_net_timeout
   wait_for_guest_net_routable = var.wait_for_guest_net_routable
   customize_timeout           = var.customize_timeout

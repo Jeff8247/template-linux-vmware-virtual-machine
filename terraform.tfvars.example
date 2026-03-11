@@ -48,6 +48,11 @@ dns_suffix_list = ["example.com"]
 # Guest OS
 guest_id  = "ubuntu64Guest"   # ubuntu64Guest, rhel9_64Guest, debian12_64Guest, etc.
 time_zone = "UTC"              # IANA timezone string e.g. America/New_York
+domain    = "corp.example.com" # DNS search suffix — also used for AD domain join if linux_domain_join_user is set
+
+# Active Directory domain join — set password via environment variable:
+#   export TF_VAR_linux_domain_join_password="..."
+# linux_domain_join_user = "svc-domain-join"
 
 # Hardware
 firmware = "bios"

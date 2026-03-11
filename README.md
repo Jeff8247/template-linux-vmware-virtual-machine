@@ -297,78 +297,47 @@ EOF
 
 ### Active Directory Domain Join
 
-Unlike Windows, vSphere guest customization does **not** perform an AD domain join for Linux VMs. The `domain` variable sets only the DNS search suffix. To join a Linux VM to Active Directory, use `linux_script_text` with `realmd` and `sssd` — the modern, supported approach on RHEL, Rocky Linux, AlmaLinux, and Ubuntu.
+Unlike Windows, vSphere guest customization does **not** perform an AD domain join for Linux VMs. The `domain` variable sets only the DNS search suffix. To join a Linux VM to Active Directory set `linux_domain_join_user` in `terraform.tfvars` and pass the password via environment variable — the template will construct and execute the `realm join` script automatically during customization using `realmd` and `sssd`.
 
-#### RHEL / Rocky Linux / AlmaLinux
+| Variable | Where to set | Description |
+|---|---|---|
+| `domain` | `terraform.tfvars` | AD domain to discover and join (e.g. `corp.example.com`) |
+| `linux_domain_join_user` | `terraform.tfvars` | AD user account with machine join permissions |
+| `linux_domain_join_password` | `TF_VAR_linux_domain_join_password` env var | Join account password — never store in tfvars |
 
-```hcl
-linux_script_text = <<-EOF
-  #!/bin/bash
-  set -e
-
-  # Install required packages
-  dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
-
-  # Discover the domain (validates DNS is working)
-  realm discover corp.example.com
-
-  # Join the domain — password passed via stdin
-  echo "$AD_JOIN_PASSWORD" | realm join --user=svc-domain-join corp.example.com
-
-  # Allow all domain users to log in (restrict with: realm permit user@corp.example.com)
-  realm permit --all
-
-  # Use short usernames (user instead of user@corp.example.com)
-  sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
-
-  # Enable home directory creation on first login
-  systemctl enable --now oddjobd
-  authselect enable-feature with-mkhomedir
-
-  systemctl restart sssd
-EOF
-```
-
-#### Ubuntu / Debian
+#### terraform.tfvars
 
 ```hcl
-linux_script_text = <<-EOF
-  #!/bin/bash
-  set -e
-
-  apt-get install -y realmd sssd sssd-tools adcli krb5-user packagekit
-
-  realm discover corp.example.com
-  echo "$AD_JOIN_PASSWORD" | realm join --user=svc-domain-join corp.example.com
-  realm permit --all
-
-  sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
-  pam-auth-update --enable mkhomedir
-
-  systemctl restart sssd
-EOF
+domain                 = "corp.example.com"
+linux_domain_join_user = "svc-domain-join"
 ```
 
-#### Password Handling
-
-The join password must not be hardcoded in `terraform.tfvars`. Pass it at runtime via an environment variable so it stays out of files entirely:
+#### Environment variable
 
 ```bash
-export TF_VAR_linux_script_text="$(cat <<'EOF'
+export TF_VAR_linux_domain_join_password="your-domain-join-password"
+```
+
+The template will automatically construct and run the following script during customization (RHEL / Rocky Linux / AlmaLinux):
+
+```bash
 #!/bin/bash
 set -e
 dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
-echo "your-join-password" | realm join --user=svc-domain-join corp.example.com
+realm discover corp.example.com
+echo "<password>" | realm join --user=svc-domain-join corp.example.com
 realm permit --all
 sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
 systemctl enable --now oddjobd
 authselect enable-feature with-mkhomedir
 systemctl restart sssd
-EOF
-)"
 ```
 
-> **Note:** Even when passed via environment variable, `linux_script_text` is stored in Terraform state. For production environments with strict secrets management, consider using Ansible or another configuration management tool triggered post-boot instead, and leave `linux_script_text` null.
+> **Ubuntu / Debian:** The auto-constructed script uses `dnf` and is tailored for RHEL-family distros. For Ubuntu/Debian, leave `linux_domain_join_user` unset and use `linux_script_text` directly with `apt-get` and `pam-auth-update --enable mkhomedir` instead.
+
+> **Note:** `linux_domain_join_user` and `linux_script_text` are mutually exclusive — the template will raise an error at plan time if both are set.
+
+> **State warning:** The constructed script (including the interpolated password) is stored in Terraform state. For environments with strict secrets management, consider leaving domain join to a configuration management tool (Ansible, Puppet) triggered post-boot instead.
 
 ### Hardware
 
@@ -380,7 +349,9 @@ EOF
 | `enable_disk_uuid` | `bool` | `true` | Expose disk UUIDs to the guest OS |
 | `vbs_enabled` | `bool` | `false` | Enable Virtualization-Based Security (requires EFI) |
 | `efi_secure_boot_enabled` | `bool` | `false` | Enable EFI Secure Boot (requires firmware = efi) |
-| `linux_script_text` | `string` | `null` | Inline shell script to run during guest customization. See example below. |
+| `linux_script_text` | `string` | `null` | Inline shell script to run during guest customization. Mutually exclusive with `linux_domain_join_user`. See example below. |
+| `linux_domain_join_user` | `string` | `null` | AD user for domain join. Requires `domain` and `linux_domain_join_password`. Mutually exclusive with `linux_script_text`. |
+| `linux_domain_join_password` | `string` | `null` | Domain join password (sensitive) — set via `TF_VAR_linux_domain_join_password` |
 | `wait_for_guest_net_timeout` | `number` | `5` | Minutes to wait for guest networking (`0` disables) |
 | `wait_for_guest_net_routable` | `bool` | `true` | Require a routable IP before marking VM ready |
 | `customize_timeout` | `number` | `30` | Minutes to wait for guest customization to complete |
