@@ -26,9 +26,8 @@ template_datacenter = null         # only needed if template is in a different d
 linked_clone        = false
 
 # CPU
-num_cpus             = 2
-num_cores_per_socket = 1
-cpu_hot_add_enabled  = false
+num_cpus            = 2
+cpu_hot_add_enabled = false
 cpu_reservation      = 0
 cpu_limit            = -1
 cpu_share_level      = "normal"
