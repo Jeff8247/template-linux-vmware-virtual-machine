@@ -318,14 +318,14 @@ linux_domain_join_user = "svc-domain-join"
 export TF_VAR_linux_domain_join_password="your-domain-join-password"
 ```
 
-The template will automatically construct and run the following script during customization (RHEL / Rocky Linux / AlmaLinux):
+The template will automatically construct and run the following script during customization (RHEL / Rocky Linux / AlmaLinux), with `domain`, `linux_domain_join_user`, and `linux_domain_join_password` interpolated from your variables:
 
 ```bash
 #!/bin/bash
 set -e
 dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
-realm discover corp.example.com
-echo "<password>" | realm join --user=svc-domain-join corp.example.com
+realm discover ${var.domain}
+echo "${var.linux_domain_join_password}" | realm join --user=${var.linux_domain_join_user} ${var.domain}
 realm permit --all
 sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
 systemctl enable --now oddjobd
