@@ -272,6 +272,10 @@ Full list: [IANA Time Zone Database](https://www.iana.org/time-zones)
 
 `linux_script_text` runs as root during guest customization, after the hostname and network have been applied. Useful for first-boot configuration that doesn't warrant a full configuration management tool.
 
+> **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
+
+#### RHEL / Rocky Linux / AlmaLinux
+
 ```hcl
 linux_script_text = <<-EOF
   #!/bin/bash
@@ -321,7 +325,54 @@ linux_script_text = <<-EOF
 EOF
 ```
 
-> **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
+#### Debian / Ubuntu
+
+```hcl
+linux_script_text = <<-EOF
+  #!/bin/bash
+  set -e
+
+  # --- NTP (point at internal server instead of pool.ntp.org) ---
+  sed -i 's/^#*NTP=.*/NTP=ntp.corp.example.com/' /etc/systemd/timesyncd.conf
+  systemctl restart systemd-timesyncd
+
+  # --- SSH hardening ---
+  sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  systemctl restart ssh
+
+  # --- Disable ufw (if managed by a perimeter firewall) ---
+  systemctl disable --now ufw
+
+  # --- Install base tooling ---
+  DEBIAN_FRONTEND=noninteractive apt-get install -y vim curl wget git net-tools open-vm-tools
+
+  # --- Apply all updates ---
+  DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade -y
+
+  # --- Deploy an authorized_keys for the ops team ---
+  mkdir -p /home/svc-ops/.ssh
+  echo "ssh-ed25519 AAAA... ops-team-key" >> /home/svc-ops/.ssh/authorized_keys
+  chmod 700 /home/svc-ops/.ssh
+  chmod 600 /home/svc-ops/.ssh/authorized_keys
+  chown -R svc-ops:svc-ops /home/svc-ops/.ssh
+
+  # --- Install and enable Puppet agent ---
+  wget -q https://apt.puppet.com/puppet8-release-$(lsb_release -cs).deb -O /tmp/puppet.deb
+  dpkg -i /tmp/puppet.deb
+  apt-get update -y
+  apt-get install -y puppet-agent
+  systemctl enable --now puppet
+
+  # --- Set DNS resolver explicitly ---
+  echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
+  systemctl restart systemd-resolved
+
+  # --- Disable IPv6 (common in locked-down environments) ---
+  echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.d/99-disable-ipv6.conf
+  sysctl --system
+EOF
+```
 
 ### Provisioning Without Domain Join
 
