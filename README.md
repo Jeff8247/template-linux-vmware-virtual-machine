@@ -272,7 +272,7 @@ Full list: [IANA Time Zone Database](https://www.iana.org/time-zones)
 
 `linux_script_text` runs as root during guest customization, after the hostname and network have been applied. Useful for first-boot configuration that doesn't warrant a full configuration management tool.
 
-> **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
+> **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use Ansible triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
 
 #### RHEL / Rocky Linux / AlmaLinux
 
@@ -310,10 +310,8 @@ linux_script_text = <<-EOF
   # --- Register with Red Hat Satellite / Subscription Manager ---
   subscription-manager register --org="MyOrg" --activationkey="rhel9-standard"
 
-  # --- Install and enable Puppet agent ---
-  rpm -Uvh https://yum.puppet.com/puppet8-release-el-9.noarch.rpm
-  dnf install -y puppet-agent
-  systemctl enable --now puppet
+  # --- Install Ansible (for post-boot configuration management) ---
+  dnf install -y ansible-core
 
   # --- Set DNS resolver explicitly ---
   echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
@@ -357,12 +355,8 @@ linux_script_text = <<-EOF
   chmod 600 /home/svc-ops/.ssh/authorized_keys
   chown -R svc-ops:svc-ops /home/svc-ops/.ssh
 
-  # --- Install and enable Puppet agent ---
-  wget -q https://apt.puppet.com/puppet8-release-$(lsb_release -cs).deb -O /tmp/puppet.deb
-  dpkg -i /tmp/puppet.deb
-  apt-get update -y
-  apt-get install -y puppet-agent
-  systemctl enable --now puppet
+  # --- Install Ansible (for post-boot configuration management) ---
+  apt-get install -y ansible
 
   # --- Set DNS resolver explicitly ---
   echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
@@ -424,7 +418,7 @@ systemctl restart sssd
 
 > **Note:** `linux_domain_join_user` and `linux_script_text` are mutually exclusive — the template will raise an error at plan time if both are set.
 
-> **State warning:** The constructed script (including the interpolated password) is stored in Terraform state and redacted from plan/apply terminal output. For environments with strict secrets management, consider leaving domain join to a configuration management tool (Ansible, Puppet) triggered post-boot instead.
+> **State warning:** The constructed script (including the interpolated password) is stored in Terraform state and redacted from plan/apply terminal output. For environments with strict secrets management, consider leaving domain join to Ansible triggered post-boot instead.
 
 ### Hardware
 
