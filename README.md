@@ -466,6 +466,6 @@ systemctl restart sssd
 ## Security Notes
 
 - `vsphere_password` is marked `sensitive = true` and will not appear in plan/apply output.
-- `terraform.tfvars` is excluded by `.gitignore`. Never commit credentials.
+- `terraform.tfvars` is excluded by `.gitignore` in this template repo to prevent accidental credential commits. When you clone this template into a dedicated resource repo, all passwords are passed via `TF_VAR_*` environment variables — the resulting `terraform.tfvars` contains no sensitive values and should be committed to track the deployed resource configuration.
 - `vsphere_allow_unverified_ssl` defaults to `false`. Only set to `true` in non-production lab environments.
 - Terraform state (`terraform.tfstate`) contains all resource attributes including sensitive values. Store state in a secured remote backend (e.g. S3 with encryption, Terraform Cloud) for any shared or production use. See `versions.tf` for where to add a backend block.
