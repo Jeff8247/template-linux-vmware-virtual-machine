@@ -323,6 +323,10 @@ EOF
 
 > **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
 
+### Provisioning Without Domain Join
+
+Leave `linux_domain_join_user` and `linux_script_text` unset (both default to `null`) and no script runs during customization. The VM is provisioned with its hostname, timezone, and network settings only. Use this path for VMs that will be managed post-boot by a configuration management tool, or that simply don't require domain membership.
+
 ### Active Directory Domain Join
 
 Unlike Windows, vSphere guest customization does **not** perform an AD domain join for Linux VMs. The `domain` variable sets only the DNS search suffix. To join a Linux VM to Active Directory set `linux_domain_join_user` in `terraform.tfvars` and pass the password via environment variable — the template will construct and execute the `realm join` script automatically during customization using `realmd` and `sssd`.
