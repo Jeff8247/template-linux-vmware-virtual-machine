@@ -359,7 +359,7 @@ else
   echo "Unsupported package manager" >&2; exit 1
 fi
 realm discover ${var.domain}
-echo "${var.linux_domain_join_password}" | realm join --user=${var.linux_domain_join_user} ${var.domain}
+printf '%s\n' "${var.linux_domain_join_password}" | realm join --user="${var.linux_domain_join_user}" "${var.domain}"
 realm permit --all
 sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/' /etc/sssd/sssd.conf
 systemctl enable --now oddjobd
