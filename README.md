@@ -310,8 +310,9 @@ linux_script_text = <<-EOF
   # --- Register with Red Hat Satellite / Subscription Manager ---
   subscription-manager register --org="MyOrg" --activationkey="rhel9-standard"
 
-  # --- Install Ansible (for post-boot configuration management) ---
-  dnf install -y ansible-core
+  # --- Install Ansible + Kerberos dependencies (required to manage Windows hosts over WinRM) ---
+  dnf install -y ansible-core krb5-workstation python3-pip
+  pip3 install pywinrm[kerberos]
 
   # --- Set DNS resolver explicitly ---
   echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
@@ -355,8 +356,9 @@ linux_script_text = <<-EOF
   chmod 600 /home/svc-ops/.ssh/authorized_keys
   chown -R svc-ops:svc-ops /home/svc-ops/.ssh
 
-  # --- Install Ansible (for post-boot configuration management) ---
-  apt-get install -y ansible
+  # --- Install Ansible + Kerberos dependencies (required to manage Windows hosts over WinRM) ---
+  DEBIAN_FRONTEND=noninteractive apt-get install -y ansible krb5-user python3-pip
+  pip3 install pywinrm[kerberos]
 
   # --- Set DNS resolver explicitly ---
   echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
