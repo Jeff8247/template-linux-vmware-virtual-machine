@@ -1,13 +1,16 @@
 locals {
-  # Default computer_name to vm_name when not explicitly set.
-  computer_name = var.computer_name != null ? var.computer_name : var.vm_name
-
   # Construct domain join script from variables when linux_domain_join_user is set.
   # Takes precedence over linux_script_text (mutually exclusive).
-  linux_script_text = var.linux_domain_join_user != null ? <<-SCRIPT
+  linux_script_text = sensitive(var.linux_domain_join_user != null ? <<-SCRIPT
     #!/bin/bash
     set -e
-    dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+    if command -v dnf >/dev/null 2>&1; then
+      dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+    elif command -v apt-get >/dev/null 2>&1; then
+      DEBIAN_FRONTEND=noninteractive apt-get install -y realmd sssd adcli krb5-user oddjob oddjob-mkhomedir packagekit
+    else
+      echo "Unsupported package manager" >&2; exit 1
+    fi
     realm discover ${var.domain}
     echo "${var.linux_domain_join_password}" | realm join --user=${var.linux_domain_join_user} ${var.domain}
     realm permit --all
@@ -16,7 +19,7 @@ locals {
     authselect enable-feature with-mkhomedir
     systemctl restart sssd
   SCRIPT
-  : var.linux_script_text
+  : var.linux_script_text)
 }
 
 check "cluster_host_exclusive" {
@@ -106,7 +109,7 @@ module "vm" {
   # Guest OS - Linux
   guest_id      = var.guest_id
   is_windows    = false
-  computer_name = local.computer_name
+  computer_name = var.computer_name
   domain        = var.domain
   time_zone     = var.time_zone
 

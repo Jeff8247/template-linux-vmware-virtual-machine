@@ -277,23 +277,51 @@ linux_script_text = <<-EOF
   #!/bin/bash
   set -e
 
-  # Disable root SSH login
+  # --- NTP (point at internal server instead of pool.ntp.org) ---
+  sed -i 's/^pool .*//' /etc/chrony.conf
+  echo "server ntp.corp.example.com iburst" >> /etc/chrony.conf
+  systemctl restart chronyd
+
+  # --- SSH hardening ---
   sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
   systemctl restart sshd
 
-  # Set DNS search domain in resolved
-  echo "Domains=corp.example.com" >> /etc/systemd/resolved.conf
-  systemctl restart systemd-resolved
+  # --- Disable firewalld (if managed by a perimeter firewall) ---
+  systemctl disable --now firewalld
 
-  # Update all packages
+  # --- Install base tooling ---
+  dnf install -y vim curl wget git net-tools open-vm-tools
+
+  # --- Apply all updates ---
   dnf update -y
 
-  # Enable and start the VMware Tools service (RHEL/Rocky/Alma)
-  systemctl enable --now vmtoolsd
+  # --- Deploy an authorized_keys for the ops team ---
+  mkdir -p /home/svc-ops/.ssh
+  echo "ssh-ed25519 AAAA... ops-team-key" >> /home/svc-ops/.ssh/authorized_keys
+  chmod 700 /home/svc-ops/.ssh
+  chmod 600 /home/svc-ops/.ssh/authorized_keys
+  chown -R svc-ops:svc-ops /home/svc-ops/.ssh
+
+  # --- Register with Red Hat Satellite / Subscription Manager ---
+  subscription-manager register --org="MyOrg" --activationkey="rhel9-standard"
+
+  # --- Install and enable Puppet agent ---
+  rpm -Uvh https://yum.puppet.com/puppet8-release-el-9.noarch.rpm
+  dnf install -y puppet-agent
+  systemctl enable --now puppet
+
+  # --- Set DNS resolver explicitly ---
+  echo "DNS=192.168.1.10 192.168.1.11" >> /etc/systemd/resolved.conf
+  systemctl restart systemd-resolved
+
+  # --- Disable IPv6 (common in locked-down environments) ---
+  echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.d/99-disable-ipv6.conf
+  sysctl --system
 EOF
 ```
 
-> **Note:** The script runs in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead.
+> **Note:** The script runs as root in the context of open-vm-tools during customization. Keep it lightweight — long-running tasks (large package installs, reboots) can cause the customization timeout to be exceeded. For heavy provisioning use a configuration management tool (Ansible, Puppet) triggered post-boot instead. Remove or comment out any blocks that do not apply to your environment.
 
 ### Active Directory Domain Join
 
@@ -318,12 +346,18 @@ linux_domain_join_user = "svc-domain-join"
 export TF_VAR_linux_domain_join_password="your-domain-join-password"
 ```
 
-The template will automatically construct and run the following script during customization (RHEL / Rocky Linux / AlmaLinux), with `domain`, `linux_domain_join_user`, and `linux_domain_join_password` interpolated from your variables:
+The template will automatically construct and run the following script during customization, with `domain`, `linux_domain_join_user`, and `linux_domain_join_password` interpolated from your variables. The script detects the package manager at runtime and works on both RHEL-family and Debian/Ubuntu guests:
 
 ```bash
 #!/bin/bash
 set -e
-dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+if command -v dnf >/dev/null 2>&1; then
+  dnf install -y realmd sssd sssd-tools adcli krb5-workstation oddjob oddjob-mkhomedir
+elif command -v apt-get >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y realmd sssd adcli krb5-user oddjob oddjob-mkhomedir packagekit
+else
+  echo "Unsupported package manager" >&2; exit 1
+fi
 realm discover ${var.domain}
 echo "${var.linux_domain_join_password}" | realm join --user=${var.linux_domain_join_user} ${var.domain}
 realm permit --all
@@ -333,11 +367,9 @@ authselect enable-feature with-mkhomedir
 systemctl restart sssd
 ```
 
-> **Ubuntu / Debian:** The auto-constructed script uses `dnf` and is tailored for RHEL-family distros. For Ubuntu/Debian, leave `linux_domain_join_user` unset and use `linux_script_text` directly with `apt-get` and `pam-auth-update --enable mkhomedir` instead.
-
 > **Note:** `linux_domain_join_user` and `linux_script_text` are mutually exclusive — the template will raise an error at plan time if both are set.
 
-> **State warning:** The constructed script (including the interpolated password) is stored in Terraform state. For environments with strict secrets management, consider leaving domain join to a configuration management tool (Ansible, Puppet) triggered post-boot instead.
+> **State warning:** The constructed script (including the interpolated password) is stored in Terraform state and redacted from plan/apply terminal output. For environments with strict secrets management, consider leaving domain join to a configuration management tool (Ansible, Puppet) triggered post-boot instead.
 
 ### Hardware
 
