@@ -58,7 +58,7 @@ check "domain_join_script_exclusive" {
 }
 
 module "vm" {
-  source = "github.com/Jeff8247/module-vmware-virtual-machine?ref=v1.0.6"
+  source = "github.com/Jeff8247/module-vmware-virtual-machine?ref=v1.0.7"
 
   # Infrastructure placement
   datacenter        = var.datacenter
